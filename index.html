@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="my">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart POS & Inventory System</title>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <style>
+        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; }
+        body { background: #f4f6f9; color: #333; padding: 20px; }
+        .container { display: flex; gap: 20px; max-width: 1200px; margin: auto; flex-wrap: wrap; }
+        .card { background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); flex: 1; min-width: 300px; }
+        h2 { margin-bottom: 15px; color: #2c3e50; border-bottom: 2px solid #eee; padding-bottom: 8px; }
+        input, select, button { width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 5px; }
+        button { background: #27ae60; color: white; font-weight: bold; border: none; cursor: pointer; }
+        button:hover { opacity: 0.9; }
+        
+        /* Scrollable Table Box (စာရင်းများပါက အထက်အောက် ဆွဲကြည့်နိုင်ရန်) */
+        .table-scroll { max-height: 350px; overflow-y: auto; border: 1px solid #eee; border-radius: 5px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { border: 1px solid #eee; padding: 8px; text-align: left; font-size: 14px; }
+        th { background: #f8f9fa; position: sticky; top: 0; z-index: 1; }
+        
+        .badge { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
+        .bg-success { background: #d4edda; color: #155724; }
+        .bg-danger { background: #f8d7da; color: #721c24; }
+        
+        .btn-add { background: #2980b9; color: white; padding: 5px 8px; width: auto; font-size: 12px; }
+        .btn-delete { background: #e74c3c; color: white; padding: 5px 8px; width: auto; font-size: 12px; margin-left: 3px; }
+    </style>
+</head>
+<body>
+
+    <h1 style="text-align: center; margin-bottom: 20px; color: #2c3e50;">Smart POS System</h1>
+
+    <div class="container">
+        <!-- 1. Inventory & Add Product -->
+        <div class="card">
+            <h2>၁။ ပစ္စည်းစာရင်း (Inventory)</h2>
+            <form id="productForm">
+                <input type="text" id="pName" placeholder="ပစ္စည်းအမည်" required>
+                <input type="number" id="pPrice" placeholder="ရောင်းဈေး (ကျပ်)" required>
+                <input type="number" id="pStock" placeholder="လက်ကျန် အရေအတွက် (Stock)" required>
+                <button type="submit">ပစ္စည်းသစ် ထည့်သွင်းမည်</button>
+            </form>
+
+            <h3 style="margin-top: 15px; margin-bottom: 10px;">လက်ရှိ Stock စာရင်း</h3>
+            <div class="table-scroll">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>အမည်</th>
+                            <th>ဈေးနှုန်း</th>
+                            <th>Stock</th>
+                            <th>လုပ်ဆောင်ချက်</th>
+                        </tr>
+                    </thead>
+                    <tbody id="inventoryList"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 2. POS Counter & Checkout -->
+        <div class="card">
+            <h2>၂။ အရောင်းကောင်တာ (POS)</h2>
+            <div id="cartArea">
+                <div class="table-scroll" style="max-height: 250px;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ပစ္စည်း</th>
+                                <th>ခုရေ</th>
+                                <th>သင့်ငွေ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cartList"></tbody>
+                    </table>
+                </div>
+                <h3 style="margin-top: 15px; text-align: right;">စုစုပေါင်း: <span id="totalAmount">0</span> ကျပ်</h3>
+                <button onclick="checkout()" style="background: #27ae60; margin-top: 15px;">ရောင်းမည် (Checkout)</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyCuWMr1EtXGRB9KcqgMviF6lTn9R7RhZug",
+            authDomain: "smartcam-ai-guard.firebaseapp.com",
+            projectId: "smartcam-ai-guard",
+            storageBucket: "smartcam-ai-guard.firebasestorage.app",
+            messagingSenderId: "1049710332292",
+            appId: "1:1049710332292:web:78467835d8f9029fcaf5d1"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        let cart = [];
+
+        // ၁။ ပစ္စည်းသစ် ထည့်ခြင်း
+        document.getElementById("productForm").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const name = document.getElementById("pName").value;
+            const price = Number(document.getElementById("pPrice").value);
+            const stock = Number(document.getElementById("pStock").value);
+
+            await db.collection("products").add({
+                name, price, stock, createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+
+            document.getElementById("productForm").reset();
+        });
+
+        // ၂။ Real-time Inventory ကို ဖတ်ရှုခြင်း
+        db.collection("products").onSnapshot((snapshot) => {
+            const list = document.getElementById("inventoryList");
+            list.innerHTML = "";
+            snapshot.forEach((doc) => {
+                const item = doc.data();
+                const stockBadge = item.stock > 0 
+                    ? `<span class="badge bg-success">${item.stock}</span>` 
+                    : `<span class="badge bg-danger">ကုန်ပြီ</span>`;
+                
+                list.innerHTML += `
+                    <tr>
+                        <td><strong>${item.name}</strong></td>
+                        <td>${item.price}</td>
+                        <td>${stockBadge}</td>
+                        <td>
+                            <button class="btn-add" onclick="addToCart('${doc.id}', '${item.name}', ${item.price}, ${item.stock})">ဝယ်မည်</button>
+                            <button class="btn-delete" onclick="deleteProduct('${doc.id}', '${item.name}')">ဖျက်မည်</button>
+                        </td>
+                    </tr>
+                `;
+            });
+        });
+
+        // ၃။ ပစ္စည်းစာရင်းကို သတိပေးချက်ဖြင့် ဖျက်ခြင်း (Delete Function)
+        async function deleteProduct(docId, productName) {
+            const confirmDelete = confirm(`"${productName}" ကို စာရင်းထဲမှ အမှန်တကယ် ဖျက်မှာ သေချာပါသလား?`);
+            if (confirmDelete) {
+                try {
+                    await db.collection("products").doc(docId).delete();
+                    alert("ပစ္စည်းစာရင်းကို အောင်မြင်စွာ ဖျက်ပြီးပါပြီ။");
+                } catch (error) {
+                    alert("ဖျက်ရာတွင် အမှားအယွင်း ရှိနေပါသည်: " + error.message);
+                }
+            }
+        }
+
+        // ၄။ Cart ထဲသို့ ပစ္စည်းထည့်ခြင်း
+        function addToCart(id, name, price, currentStock) {
+            const existing = cart.find(i => i.id === id);
+            if (existing) {
+                if(existing.qty < currentStock) { existing.qty++; }
+                else { alert("Stock လက်ကျန်ထက် ပိုရောင်း၍ မရပါ!"); }
+            } else {
+                if(currentStock > 0) { cart.push({ id, name, price, qty: 1 }); }
+                else { alert("ဒီပစ္စည်း လက်ကျန်ကုန်နေပါသည်။"); }
+            }
+            renderCart();
+        }
+
+        function renderCart() {
+            const cartList = document.getElementById("cartList");
+            cartList.innerHTML = "";
+            let total = 0;
+            cart.forEach(item => {
+                const itemTotal = item.price * item.qty;
+                total += itemTotal;
+                cartList.innerHTML += `
+                    <tr>
+                        <td>${item.name}</td>
+                        <td>${item.qty} ခု</td>
+                        <td>${itemTotal} ကျပ်</td>
+                    </tr>
+                `;
+            });
+            document.getElementById("totalAmount").innerText = total;
+        }
+
+        // ၅။ ရောင်းချခြင်း (Checkout)
+        async function checkout() {
+            if (cart.length === 0) return alert("Cart ထဲတွင် ပစ္စည်းမရှိသေးပါ!");
+
+            const batch = db.batch();
+            let total = 0;
+
+            cart.forEach(item => {
+                total += item.price * item.qty;
+                const ref = db.collection("products").doc(item.id);
+                batch.update(ref, { stock: firebase.firestore.FieldValue.increment(-item.qty) });
+            });
+
+            const saleRef = db.collection("sales").doc();
+            batch.set(saleRef, {
+                items: cart,
+                totalAmount: total,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            });
+
+            await batch.commit();
+            cart = [];
+            renderCart();
+            alert("ရောင်းချမှု အောင်မြင်ပါသည်။");
+        }
+    </script>
+</body>
+  </html>
+  
