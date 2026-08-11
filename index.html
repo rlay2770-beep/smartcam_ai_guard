@@ -49,7 +49,7 @@
         .payment-selection label { font-size: 12px; font-weight: 600; color: #64748b; margin-bottom: 5px; display: block; }
         .payment-options { display: flex; gap: 8px; }
         .pay-btn { flex: 1; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; background: white; cursor: pointer; font-size: 12px; font-weight: 600; text-align: center; }
-        .pay-btn.active { border-color: var(--accent); background: #ecfdf5; color: var(--accent); }
+        .pay-btn.active { border-color: var(--accent) !important; background: #ecfdf5 !important; color: var(--accent) !important; font-weight: bold; }
 
         .checkout-box { background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; }
         .total-row { display: flex; justify-content: space-between; font-size: 18px; font-weight: 700; color: var(--primary); margin-bottom: 12px; }
@@ -224,16 +224,10 @@
         let cashReceived = 0;
         let changeAmount = 0;
         const ADMIN_PIN = "1234";
-        // WavePay ဖုန်းနံပါတ် 09663711680 ထည့်ထားသည့်နေရာ
+
         const MERCHANT_INFO = {
-            KPay: { 
-                name: "KPay မရရှိသေးပါ", 
-                phone: "-" 
-            },
-            WavePay: { 
-                name: "City Market (Wave)", 
-                phone: "09663711680" 
-            }
+            KPay: { name: "KPay မရရှိသေးပါ", phone: "-" },
+            WavePay: { name: "City Market (Wave)", phone: "09663711680" }
         };
 
         db.collection("products").onSnapshot(snapshot => {
@@ -275,6 +269,13 @@
                     </tr>
                 `;
             });
+        }
+
+        function selectPay(method, btn) {
+            selectedPayment = method;
+            const payBtns = document.querySelectorAll('.pay-btn');
+            payBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
         }
 
         function openInventoryWithAuth() {
@@ -362,7 +363,7 @@
             document.getElementById("totalAmount").innerText = grandTotal.toLocaleString() + " ကျပ်";
         }
 
-                        function initiateCheckout() {
+        function initiateCheckout() {
             if (cart.length === 0) return alert("Cart ထဲတွင် ပစ္စည်းမရှိသေးပါ!");
 
             const modalTitle = document.getElementById("payModalTitle");
@@ -377,8 +378,8 @@
                     <p style="font-weight:bold; color:var(--accent); font-size:15px; margin-top:5px;">ပြန်အမ်းငွေ: <span id="changeText">0</span> ကျပ်</p>
                 `;
             } else if (selectedPayment === 'WavePay') {
-                const wavePhone = (typeof MERCHANT_INFO !== 'undefined' && MERCHANT_INFO.WavePay) ? MERCHANT_INFO.WavePay.phone : "09663711680";
-                const waveName = (typeof MERCHANT_INFO !== 'undefined' && MERCHANT_INFO.WavePay) ? MERCHANT_INFO.WavePay.name : "City Market (Wave)";
+                const wavePhone = MERCHANT_INFO.WavePay.phone;
+                const waveName = MERCHANT_INFO.WavePay.name;
 
                 modalTitle.innerText = `WavePay ဖြင့် ငွေချေမည်`;
                 modalBody.innerHTML = `
@@ -386,9 +387,7 @@
                         <p style="font-weight:bold; margin-bottom:5px; font-size:14px;">ကျသင့်ငွေ: ${grandTotal.toLocaleString()} ကျပ်</p>
                         <p style="font-size:13px; color:#0284c7; font-weight:bold;">Account: ${waveName}</p>
                         <p style="font-size:15px; color:#0f172a; font-weight:bold; margin-bottom:8px;">Wave ဖုန်းနံပါတ်: ${wavePhone}</p>
-                        
                         <img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=WavePay-${wavePhone}-${grandTotal}" alt="WavePay QR Code" style="border:2px solid #0284c7; padding:5px; border-radius:8px; background:white;">
-                        
                         <p style="font-size:11px; color:#64748b; margin-top:8px;">WavePay App မှ အထက်ပါ QR ကို Scan ဖတ်၍ ငွေလွှဲပေးပါ</p>
                     </div>
                 `;
@@ -402,8 +401,76 @@
                 `;
             }
             document.getElementById("payModal").style.display = "flex";
-                        }
-        
+        }
+
+        function calculateChange() {
+            const val = Number(document.getElementById("cashInput").value);
+            cashReceived = val;
+            changeAmount = val - grandTotal;
+            document.getElementById("changeText").innerText = changeAmount >= 0 ? changeAmount.toLocaleString() : 0;
+        }
+
+        async function confirmCheckout() {
+            if (selectedPayment === 'KPay') {
+                return alert("KPay ဖြင့် ငွေချေ၍ မရသေးပါ!");
+            }
+            if (selectedPayment === 'Cash' && cashReceived < grandTotal) {
+                return alert("ဝယ်ယူသူပေးသည့်ငွေ မလုံလောက်ပါ။");
+            }
+
+            // Firebase ထဲသို့ ရောင်းအားစာရင်း သိမ်းခြင်း
+            await db.collection("sales").add({
+                items: cart,
+                totalAmount: grandTotal,
+                paymentMethod: selectedPayment,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            });
+
+            // Stock များ လျှော့ချခြင်း
+            for (let item of cart) {
+                await db.collection("products").doc(item.id).update({
+                    stock: firebase.firestore.FieldValue.increment(-item.qty)
+                });
+            }
+
+            // Receipt အား ပြင်ဆင်ပေးခြင်း
+            let receiptHTML = "";
+            cart.forEach(i => {
+                receiptHTML += `<div style="display:flex; justify-style:space-between;"><span>${i.name} x ${i.qty}</span> <span>${(i.price * i.qty).toLocaleString()}</span></div>`;
+            });
+            receiptHTML += `<hr style="margin:5px 0; border:dashed 1px #e2e8f0;">`;
+            receiptHTML += `<div style="display:flex; justify-content:space-between; font-weight:bold;"><span>စုစုပေါင်း:</span> <span>${grandTotal.toLocaleString()} ကျပ်</span></div>`;
+            receiptHTML += `<div style="display:flex; justify-content:space-between; font-size:11px;"><span>ငွေပေးချေမှု:</span> <span>${selectedPayment}</span></div>`;
+
+            document.getElementById("receiptContent").innerHTML = receiptHTML;
+            document.getElementById("receiptDate").innerText = new Date().toLocaleString("my-MM");
+
+            closeModal("payModal");
+            document.getElementById("receiptModal").style.display = "flex";
+            clearCart();
+        }
+
+        async function openSalesHistory() {
+            const snapshot = await db.collection("sales").orderBy("timestamp", "desc").limit(20).get();
+            const list = document.getElementById("salesReportList");
+            list.innerHTML = "";
+            let total = 0;
+            snapshot.docs.forEach(doc => {
+                const data = doc.data();
+                total += data.totalAmount || 0;
+                const time = data.timestamp ? new Date(data.timestamp.toDate()).toLocaleTimeString() : "-";
+                list.innerHTML += `
+                    <tr>
+                        <td>${time}</td>
+                        <td>${(data.totalAmount || 0).toLocaleString()} ကျပ်</td>
+                        <td><span style="background:#e2e8f0; padding:2px 6px; border-radius:4px; font-size:10px;">${data.paymentMethod}</span></td>
+                    </tr>
+                `;
+            });
+            document.getElementById("totalSalesRevenue").innerText = total.toLocaleString();
+            document.getElementById("salesModal").style.display = "flex";
+        }
+
         function printReceipt() { window.print(); }
         function closeModal(id) { document.getElementById(id).style.display = "none"; }
         function clearCart() { cart = []; renderCart(); }
