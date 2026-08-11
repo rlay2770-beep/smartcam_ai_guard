@@ -56,13 +56,15 @@
         .btn-checkout { background: var(--accent); color: white; width: 100%; padding: 12px; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 15px; }
 
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 100; }
-        .modal-card { background: white; width: 90%; max-width: 550px; padding: 20px; border-radius: 12px; max-height: 85vh; overflow-y: auto; }
+        .modal-card { background: white; width: 90%; max-width: 550px; padding: 20px; border-radius: 12px; max-height: 85vh; display: flex; flex-direction: column; }
         input, select { width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #cbd5e1; border-radius: 6px; }
         .btn-action { background: var(--primary); color: white; border: none; padding: 10px; border-radius: 6px; cursor: pointer; width: 100%; font-weight: 600; }
 
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; }
-        th, td { border: 1px solid #e2e8f0; padding: 8px; text-align: left; }
-        th { background: #f1f5f9; }
+        /* Scrollable Table Style */
+        .table-container { overflow-y: auto; flex-grow: 1; max-height: 350px; border: 1px solid #e2e8f0; border-radius: 6px; }
+        table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        th, td { border: 1px solid #e2e8f0; padding: 10px; text-align: left; }
+        th { background: #f1f5f9; position: sticky; top: 0; z-index: 1; }
 
         @media print {
             body * { visibility: hidden; }
@@ -130,7 +132,7 @@
                 <button onclick="closeModal('inventoryModal')" style="background:none; border:none; font-size:18px; cursor:pointer;">✕</button>
             </div>
 
-            <form id="addProductForm" style="margin-bottom: 20px;">
+            <form id="addProductForm" style="margin-bottom: 15px;">
                 <input type="text" id="pName" placeholder="ပစ္စည်းအမည်" required>
                 <input type="number" id="pPrice" placeholder="ရောင်းဈေး (ကျပ်)" required>
                 <input type="number" id="pStock" placeholder="လက်ကျန် အရေအတွက်" required>
@@ -138,17 +140,19 @@
             </form>
 
             <h3 style="font-size: 14px; margin-bottom: 10px;">လက်ရှိ ပစ္စည်းများစာရင်း</h3>
-            <table>
-                <thead>
-                    <tr>
-                        <th>အမည်</th>
-                        <th>ဈေး</th>
-                        <th>Stock</th>
-                        <th>ပြင်/ဖျက်</th>
-                    </tr>
-                </thead>
-                <tbody id="adminInventoryList"></tbody>
-            </table>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>အမည်</th>
+                            <th>ဈေး</th>
+                            <th>Stock</th>
+                            <th>ပြင်/ဖျက်</th>
+                        </tr>
+                    </thead>
+                    <tbody id="adminInventoryList"></tbody>
+                </table>
+            </div>
         </div>
     </div>
 
@@ -162,16 +166,18 @@
             <div style="background:#e0f2fe; padding:12px; border-radius:8px; margin-bottom:15px; font-weight:bold; color:#0369a1;">
                 စုစုပေါင်း ရောင်းရငွေ: <span id="totalSalesRevenue">0</span> ကျပ်
             </div>
-            <table>
-                <thead>
-                    <tr>
-                        <th>အချိန်</th>
-                        <th>ကျသင့်ငွေ</th>
-                        <th>Type</th>
-                    </tr>
-                </thead>
-                <tbody id="salesReportList"></tbody>
-            </table>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>အချိန်</th>
+                            <th>ကျသင့်ငွေ</th>
+                            <th>Type</th>
+                        </tr>
+                    </thead>
+                    <tbody id="salesReportList"></tbody>
+                </table>
+            </div>
         </div>
     </div>
 
@@ -363,7 +369,7 @@
             document.getElementById("totalAmount").innerText = grandTotal.toLocaleString() + " ကျပ်";
         }
 
-        function initiateCheckout() {
+         function initiateCheckout() {
             if (cart.length === 0) return alert("Cart ထဲတွင် ပစ္စည်းမရှိသေးပါ!");
 
             const modalTitle = document.getElementById("payModalTitle");
@@ -381,14 +387,17 @@
                 const wavePhone = MERCHANT_INFO.WavePay.phone;
                 const waveName = MERCHANT_INFO.WavePay.name;
 
+                // WavePay Deep Link QR Code Standard Format
+                const waveQrPayload = encodeURIComponent(`https://payment.wavemoney.com.mm/pay?phone=${wavePhone}&amount=${grandTotal}&note=CityMarketPOS`);
+
                 modalTitle.innerText = `WavePay ဖြင့် ငွေချေမည်`;
                 modalBody.innerHTML = `
                     <div style="text-align:center;">
                         <p style="font-weight:bold; margin-bottom:5px; font-size:14px;">ကျသင့်ငွေ: ${grandTotal.toLocaleString()} ကျပ်</p>
                         <p style="font-size:13px; color:#0284c7; font-weight:bold;">Account: ${waveName}</p>
                         <p style="font-size:15px; color:#0f172a; font-weight:bold; margin-bottom:8px;">Wave ဖုန်းနံပါတ်: ${wavePhone}</p>
-                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=WavePay-${wavePhone}-${grandTotal}" alt="WavePay QR Code" style="border:2px solid #0284c7; padding:5px; border-radius:8px; background:white;">
-                        <p style="font-size:11px; color:#64748b; margin-top:8px;">WavePay App မှ အထက်ပါ QR ကို Scan ဖတ်၍ ငွေလွှဲပေးပါ</p>
+                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${waveQrPayload}" alt="WavePay QR Code" style="border:2px solid #0284c7; padding:5px; border-radius:8px; background:white;">
+                        <p style="font-size:11px; color:#64748b; margin-top:8px;">WavePay App မှ QR စကင်ဖတ်၍ ငွေလွှဲပေးပါ</p>
                     </div>
                 `;
             } else if (selectedPayment === 'KPay') {
@@ -436,7 +445,7 @@
             // Receipt အား ပြင်ဆင်ပေးခြင်း
             let receiptHTML = "";
             cart.forEach(i => {
-                receiptHTML += `<div style="display:flex; justify-style:space-between;"><span>${i.name} x ${i.qty}</span> <span>${(i.price * i.qty).toLocaleString()}</span></div>`;
+                receiptHTML += `<div style="display:flex; justify-content:space-between;"><span>${i.name} x ${i.qty}</span> <span>${(i.price * i.qty).toLocaleString()}</span></div>`;
             });
             receiptHTML += `<hr style="margin:5px 0; border:dashed 1px #e2e8f0;">`;
             receiptHTML += `<div style="display:flex; justify-content:space-between; font-weight:bold;"><span>စုစုပေါင်း:</span> <span>${grandTotal.toLocaleString()} ကျပ်</span></div>`;
@@ -451,14 +460,15 @@
         }
 
         async function openSalesHistory() {
-            const snapshot = await db.collection("sales").orderBy("timestamp", "desc").limit(20).get();
+            // စာရင်းများလာပါက Limit ၁၀၀ အထိ တိုးမြှင့်ပြသပေးထားပါသည်
+            const snapshot = await db.collection("sales").orderBy("timestamp", "desc").limit(100).get();
             const list = document.getElementById("salesReportList");
             list.innerHTML = "";
             let total = 0;
             snapshot.docs.forEach(doc => {
                 const data = doc.data();
                 total += data.totalAmount || 0;
-                const time = data.timestamp ? new Date(data.timestamp.toDate()).toLocaleTimeString() : "-";
+                const time = data.timestamp ? new Date(data.timestamp.toDate()).toLocaleString() : "-";
                 list.innerHTML += `
                     <tr>
                         <td>${time}</td>
