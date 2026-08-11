@@ -10,24 +10,26 @@
         * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; }
         body { background: #f4f6f9; color: #333; padding: 20px; }
         .container { display: flex; gap: 20px; max-width: 1200px; margin: auto; flex-wrap: wrap; }
-        .card { background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); flex: 1; min-width: 300px; }
+        .card { background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); flex: 1; min-width: 320px; }
         h2 { margin-bottom: 15px; color: #2c3e50; border-bottom: 2px solid #eee; padding-bottom: 8px; }
         input, select, button { width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 5px; }
         button { background: #27ae60; color: white; font-weight: bold; border: none; cursor: pointer; }
         button:hover { opacity: 0.9; }
         
-        /* Scrollable Table Box (စာရင်းများပါက အထက်အောက် ဆွဲကြည့်နိုင်ရန်) */
-        .table-scroll { max-height: 350px; overflow-y: auto; border: 1px solid #eee; border-radius: 5px; }
+        .table-scroll { max-height: 380px; overflow-y: auto; border: 1px solid #eee; border-radius: 5px; }
         table { width: 100%; border-collapse: collapse; }
-        th, td { border: 1px solid #eee; padding: 8px; text-align: left; font-size: 14px; }
+        th, td { border: 1px solid #eee; padding: 8px; text-align: left; font-size: 13px; }
         th { background: #f8f9fa; position: sticky; top: 0; z-index: 1; }
         
-        .badge { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
+        .badge { padding: 4px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; }
         .bg-success { background: #d4edda; color: #155724; }
+        .bg-warning { background: #fff3cd; color: #856404; }
         .bg-danger { background: #f8d7da; color: #721c24; }
         
-        .btn-add { background: #2980b9; color: white; padding: 5px 8px; width: auto; font-size: 12px; }
-        .btn-delete { background: #e74c3c; color: white; padding: 5px 8px; width: auto; font-size: 12px; margin-left: 3px; }
+        .btn-sm { padding: 4px 8px; font-size: 11px; width: auto; margin-right: 2px; }
+        .btn-add { background: #2980b9; }
+        .btn-restock { background: #f39c12; }
+        .btn-delete { background: #e74c3c; }
     </style>
 </head>
 <body>
@@ -35,17 +37,17 @@
     <h1 style="text-align: center; margin-bottom: 20px; color: #2c3e50;">Smart POS System</h1>
 
     <div class="container">
-        <!-- 1. Inventory & Add Product -->
+        <!-- 1. Inventory Management -->
         <div class="card">
             <h2>၁။ ပစ္စည်းစာရင်း (Inventory)</h2>
             <form id="productForm">
                 <input type="text" id="pName" placeholder="ပစ္စည်းအမည်" required>
                 <input type="number" id="pPrice" placeholder="ရောင်းဈေး (ကျပ်)" required>
-                <input type="number" id="pStock" placeholder="လက်ကျန် အရေအတွက် (Stock)" required>
-                <button type="submit">ပစ္စည်းသစ် ထည့်သွင်းမည်</button>
+                <input type="number" id="pStock" placeholder="လက်ကျန် အရေအတွက်" required>
+                <button type="submit">ပစ္စည်းသစ် စာရင်းသွင်းမည်</button>
             </form>
 
-            <h3 style="margin-top: 15px; margin-bottom: 10px;">လက်ရှိ Stock စာရင်း</h3>
+            <h3 style="margin: 15px 0 10px 0;">လက်ရှိ Stock စာရင်း</h3>
             <div class="table-scroll">
                 <table>
                     <thead>
@@ -61,7 +63,7 @@
             </div>
         </div>
 
-        <!-- 2. POS Counter & Checkout -->
+        <!-- 2. POS Counter -->
         <div class="card">
             <h2>၂။ အရောင်းကောင်တာ (POS)</h2>
             <div id="cartArea">
@@ -97,7 +99,7 @@
 
         let cart = [];
 
-        // ၁။ ပစ္စည်းသစ် ထည့်ခြင်း
+        // ပစ္စည်းသစ် ထည့်ခြင်း
         document.getElementById("productForm").addEventListener("submit", async (e) => {
             e.preventDefault();
             const name = document.getElementById("pName").value;
@@ -111,15 +113,20 @@
             document.getElementById("productForm").reset();
         });
 
-        // ၂။ Real-time Inventory ကို ဖတ်ရှုခြင်း
+        // Real-time Inventory ဖတ်ခြင်း
         db.collection("products").onSnapshot((snapshot) => {
             const list = document.getElementById("inventoryList");
             list.innerHTML = "";
             snapshot.forEach((doc) => {
                 const item = doc.data();
-                const stockBadge = item.stock > 0 
-                    ? `<span class="badge bg-success">${item.stock}</span>` 
-                    : `<span class="badge bg-danger">ကုန်ပြီ</span>`;
+                
+                // Stock အခြေအနေ ပေါ်မူတည်၍ Badge အရောင်ပြောင်းခြင်း
+                let stockBadge = `<span class="badge bg-success">${item.stock} ခု</span>`;
+                if (item.stock === 0) {
+                    stockBadge = `<span class="badge bg-danger">ကုန်ပြီ</span>`;
+                } else if (item.stock <= 3) {
+                    stockBadge = `<span class="badge bg-warning">${item.stock} (နည်းနေပြီ)</span>`;
+                }
                 
                 list.innerHTML += `
                     <tr>
@@ -127,28 +134,34 @@
                         <td>${item.price}</td>
                         <td>${stockBadge}</td>
                         <td>
-                            <button class="btn-add" onclick="addToCart('${doc.id}', '${item.name}', ${item.price}, ${item.stock})">ဝယ်မည်</button>
-                            <button class="btn-delete" onclick="deleteProduct('${doc.id}', '${item.name}')">ဖျက်မည်</button>
+                            <button class="btn-sm btn-add" onclick="addToCart('${doc.id}', '${item.name}', ${item.price}, ${item.stock})">ဝယ်မည်</button>
+                            <button class="btn-sm btn-restock" onclick="restockProduct('${doc.id}', '${item.name}')">+ဖြည့်</button>
+                            <button class="btn-sm btn-delete" onclick="deleteProduct('${doc.id}', '${item.name}')">ဖျက်</button>
                         </td>
                     </tr>
                 `;
             });
         });
 
-        // ၃။ ပစ္စည်းစာရင်းကို သတိပေးချက်ဖြင့် ဖျက်ခြင်း (Delete Function)
-        async function deleteProduct(docId, productName) {
-            const confirmDelete = confirm(`"${productName}" ကို စာရင်းထဲမှ အမှန်တကယ် ဖျက်မှာ သေချာပါသလား?`);
-            if (confirmDelete) {
-                try {
-                    await db.collection("products").doc(docId).delete();
-                    alert("ပစ္စည်းစာရင်းကို အောင်မြင်စွာ ဖျက်ပြီးပါပြီ။");
-                } catch (error) {
-                    alert("ဖျက်ရာတွင် အမှားအယွင်း ရှိနေပါသည်: " + error.message);
-                }
+        // Stock ထပ်ဖြည့်သည့် Function
+        async function restockProduct(docId, productName) {
+            const qty = prompt(`"${productName}" အတွက် ထပ်မံဝယ်ယူလာသည့် အရေအတွက်ကို ရိုက်ထည့်ပါ:`);
+            if (qty && !isNaN(qty) && Number(qty) > 0) {
+                await db.collection("products").doc(docId).update({
+                    stock: firebase.firestore.FieldValue.increment(Number(qty))
+                });
+                alert("Stock ထပ်မံဖြည့်သွင်းပြီးပါပြီ။");
             }
         }
 
-        // ၄။ Cart ထဲသို့ ပစ္စည်းထည့်ခြင်း
+        // ဖျက်သည့် Function
+        async function deleteProduct(docId, productName) {
+            if (confirm(`"${productName}" ကို စာရင်းထဲမှ အမှန်တကယ် ဖျက်မှာ သေချာပါသလား?`)) {
+                await db.collection("products").doc(docId).delete();
+            }
+        }
+
+        // Cart သို့ ထည့်ခြင်း
         function addToCart(id, name, price, currentStock) {
             const existing = cart.find(i => i.id === id);
             if (existing) {
@@ -179,7 +192,7 @@
             document.getElementById("totalAmount").innerText = total;
         }
 
-        // ၅။ ရောင်းချခြင်း (Checkout)
+        // Checkout
         async function checkout() {
             if (cart.length === 0) return alert("Cart ထဲတွင် ပစ္စည်းမရှိသေးပါ!");
 
@@ -206,5 +219,5 @@
         }
     </script>
 </body>
-  </html>
-  
+    </html>
+                    
