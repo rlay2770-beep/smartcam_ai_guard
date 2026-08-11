@@ -362,7 +362,7 @@
             document.getElementById("totalAmount").innerText = grandTotal.toLocaleString() + " ကျပ်";
         }
 
-                function initiateCheckout() {
+                        function initiateCheckout() {
             if (cart.length === 0) return alert("Cart ထဲတွင် ပစ္စည်းမရှိသေးပါ!");
 
             const modalTitle = document.getElementById("payModalTitle");
@@ -377,32 +377,32 @@
                     <p style="font-weight:bold; color:var(--accent); font-size:15px; margin-top:5px;">ပြန်အမ်းငွေ: <span id="changeText">0</span> ကျပ်</p>
                 `;
             } else if (selectedPayment === 'WavePay') {
-                const info = MERCHANT_INFO.WavePay;
+                const wavePhone = (typeof MERCHANT_INFO !== 'undefined' && MERCHANT_INFO.WavePay) ? MERCHANT_INFO.WavePay.phone : "09663711680";
+                const waveName = (typeof MERCHANT_INFO !== 'undefined' && MERCHANT_INFO.WavePay) ? MERCHANT_INFO.WavePay.name : "City Market (Wave)";
+
                 modalTitle.innerText = `WavePay ဖြင့် ငွေချေမည်`;
                 modalBody.innerHTML = `
                     <div style="text-align:center;">
                         <p style="font-weight:bold; margin-bottom:5px; font-size:14px;">ကျသင့်ငွေ: ${grandTotal.toLocaleString()} ကျပ်</p>
-                        <p style="font-size:13px; color:#0284c7; font-weight:bold;">Account Name: ${info.name}</p>
-                        <p style="font-size:15px; color:#0f172a; font-weight:bold; margin-bottom:8px;">Wave ဖုန်းနံပါတ်: ${info.phone}</p>
+                        <p style="font-size:13px; color:#0284c7; font-weight:bold;">Account: ${waveName}</p>
+                        <p style="font-size:15px; color:#0f172a; font-weight:bold; margin-bottom:8px;">Wave ဖုန်းနံပါတ်: ${wavePhone}</p>
                         
-                        <!-- 09663711680 ဖုန်းနံပါတ်ဖြင့် QR Code ဖန်တီးပေးခြင်း -->
-                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=WavePay-${info.phone}-${grandTotal}" alt="WavePay QR Code" style="border:2px solid #0284c7; padding:5px; border-radius:8px; background:white;">
+                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=WavePay-${wavePhone}-${grandTotal}" alt="WavePay QR Code" style="border:2px solid #0284c7; padding:5px; border-radius:8px; background:white;">
                         
                         <p style="font-size:11px; color:#64748b; margin-top:8px;">WavePay App မှ အထက်ပါ QR ကို Scan ဖတ်၍ ငွေလွှဲပေးပါ</p>
                     </div>
                 `;
             } else if (selectedPayment === 'KPay') {
-                const info = MERCHANT_INFO.KPay;
                 modalTitle.innerText = `KPay ဖြင့် ငွေချေမည်`;
                 modalBody.innerHTML = `
                     <div style="text-align:center; padding: 10px;">
-                        <p style="font-weight:bold; color:#ef4444; margin-bottom:10px;">${info.name}</p>
-                        <p style="font-size:12px; color:#64748b;">KPay စနစ်ကို လတ်တလော အသုံးမပြုနိုင်သေးပါ။ ကျေးဇူးပြု၍ Cash သို့မဟုတ် WavePay ကို အသုံးပြုပေးပါ။</p>
+                        <p style="font-weight:bold; color:#ef4444; margin-bottom:10px;">KPay အကောင့် ပိတ်ထားပါသည်</p>
+                        <p style="font-size:12px; color:#64748b;">ကျေးဇူးပြု၍ Cash သို့မဟုတ် WavePay ကို ရွေးချယ်အသုံးပြုပေးပါ။</p>
                     </div>
                 `;
             }
             document.getElementById("payModal").style.display = "flex";
-        }
+                        }
         
         function printReceipt() { window.print(); }
         function closeModal(id) { document.getElementById(id).style.display = "none"; }
