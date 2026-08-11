@@ -224,11 +224,16 @@
         let cashReceived = 0;
         let changeAmount = 0;
         const ADMIN_PIN = "1234";
-
-        // Merchant Payment Config
+        // WavePay ဖုန်းနံပါတ် 09663711680 ထည့်ထားသည့်နေရာ
         const MERCHANT_INFO = {
-            KPay: { name: "City Market Store", phone: "09123456789" },
-            WavePay: { name: "City Market Shop", phone: "09987654321" }
+            KPay: { 
+                name: "KPay မရရှိသေးပါ", 
+                phone: "-" 
+            },
+            WavePay: { 
+                name: "City Market (Wave)", 
+                phone: "09663711680" 
+            }
         };
 
         db.collection("products").onSnapshot(snapshot => {
